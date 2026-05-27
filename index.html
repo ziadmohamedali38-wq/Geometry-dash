@@ -3,280 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Odyssey Spinoff Engine</title>
+    <title>GD Sprite Engine Edition</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; }
-        body { background: #0a0a16; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
-        #gameContainer { position: relative; width: 100%; height: 100%; max-width: 854px; max-height: 480px; aspect-ratio: 16/9; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 2px solid #3b82f6; }
-        canvas { background: linear-gradient(to bottom, #1e1b4b, #0f172a); width: 100%; height: 100%; display: block; }
-        #uiOverlay { position: absolute; top: 15px; left: 15px; color: #fff; text-shadow: 2px 2px 4px #000; font-weight: bold; pointer-events: none; font-size: 18px; }
-        #modeIndicator { position: absolute; top: 15px; right: 15px; background: rgba(59, 130, 246, 0.4); padding: 5px 12px; border-radius: 20px; color: #fff; font-size: 14px; border: 1px solid #3b82f6; text-transform: uppercase; }
+        * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; user-select: none; }
+        body { background: #050510; font-family: 'Arial Black', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+        #gameContainer { position: relative; width: 100%; height: 100%; max-width: 854px; max-height: 480px; aspect-ratio: 16/9; box-shadow: 0 0 50px rgba(34, 197, 94, 0.4); border: 3px solid #22c55e; background: #000; }
+        canvas { width: 100%; height: 100%; display: block; }
+        
+        /* Interactive Overlay Screens */
+        .overlay-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        #mainMenu { background: radial-gradient(circle, #1e1b4b 0%, #020205 100%); }
+        .menu-title { color: #fff; font-size: 52px; text-shadow: 4px 4px 0px #1e40af, 0 0 30px rgba(255,255,255,0.4); margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; }
+        
+        /* Custom Sprite-Style Button mapping your exact asset design */
+        .sprite-play-btn { width: 110px; height: 110px; border-radius: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.1s; background-image: url('https://i.postimg.cc/YSFLfxRh/Screenshot-20260527-205103-You-Tube.jpg'); background-size: 550px 460px; background-position: -435px -105px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .sprite-play-btn:active { transform: scale(0.95); }
+
+        #hud { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; color: white; font-size: 18px; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 5; display: none; }
+        .stats-badge { background: rgba(0, 0, 0, 0.7); padding: 8px 16px; border-radius: 10px; border: 2px solid #22c55e; }
     </style>
 </head>
 <body>
 
 <div id="gameContainer">
+    <div id="mainMenu" class="overlay-ui">
+        <div class="menu-title">Spinoff Deluxe</div>
+        <div class="sprite-play-btn" onclick="launchEngine()"></div>
+    </div>
+
+    <div id="hud">
+        <div class="stats-badge">Attempt <span id="attemptCount">1</span></div>
+        <div class="stats-badge" id="modeDisplay">MODE: CUBE</div>
+    </div>
+
     <canvas id="gameCanvas" width="854" height="480"></canvas>
-    <div id="uiOverlay">Attempt: <span id="attemptCount">1</span></div>
-    <div id="modeIndicator">Mode: Cube</div>
 </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const attemptEl = document.getElementById('attemptCount');
-const modeEl = document.getElementById('modeIndicator');
+const hud = document.getElementById('hud');
+const mainMenu = document.getElementById('mainMenu');
+const attemptCountEl = document.getElementById('attemptCount');
+const modeDisplayEl = document.getElementById('modeDisplay');
 
-// Engine Settings & Constant Game Physics
-const PHYSICS = {
-    gravity: 1.4,
-    jumpForce: -16,
-    speed: 6,
-    floorY: 380,
-    waveSpeed: 6
+let gameState = "MENU";
+let isRunning = false;
+let cameraX = 0;
+let attempts = 1;
+let gameMode = "CUBE";
+
+const CONFIG = {
+    gravity: 1.35,
+    jump: -15.5,
+    speed: 7,
+    floorY: 390,
+    waveSpeed: 6.5
 };
 
-let gameActive = true;
-let attempts = 1;
-let gameMode = "CUBE"; // Modes: CUBE, WAVE
-let cameraX = 0;
-
-// Player Properties
 const player = {
-    x: 100,
+    x: 130,
     y: 300,
-    width: 32,
-    height: 32,
+    w: 36,
+    h: 36,
     vy: 0,
     isGrounded: false,
     rotation: 0,
-    primaryColor: '#00ffff',
-    secondaryColor: '#ff007f'
+    trail: []
 };
 
-// Built-in Level Layout (X coordinate, Type, Custom Properties)
-let obstacles = [
-    { x: 400, type: 'SPIKE' },
-    { x: 650, type: 'PAD' }, // Launches player high automatically
-    { x: 800, type: 'SPIKE' },
-    { x: 950, type: 'RING' }, // Jump ring (requires tap mid-air)
-    { x: 1100, type: 'SPIKE' },
-    { x: 1300, type: 'PORTAL_WAVE' }, // Switches mode to Wave
-    { x: 1600, type: 'WAVE_WALL_TOP', y: 0, w: 60, h: 180 },
-    { x: 1800, type: 'WAVE_WALL_BOT', y: 260, w: 60, h: 120 },
-    { x: 2100, type: 'PORTAL_CUBE' }  // Switches mode back to Cube
+// Map containing your specific layout configurations
+let mapObjects = [
+    { x: 600, type: 'SPIKE' },
+    { x: 850, type: 'SAW' },
+    { x: 1050, type: 'PAD' },
+    { x: 1250, type: 'SPIKE' },
+    { x: 1400, type: 'RING' },
+    { x: 1700, type: 'PORTAL_WAVE' },
+    { x: 1950, type: 'PILLAR_TOP', y: 0, w: 70, h: 150 },
+    { x: 2150, type: 'PILLAR_BOT', y: 250, w: 70, h: 140 },
+    { x: 2400, type: 'SAW', y: 180 },
+    { x: 2650, type: 'PORTAL_CUBE' },
+    { x: 2900, type: 'SPIKE' }
 ];
 
-// Reusable Map Resetter
-function resetGame() {
-    player.y = 300;
-    player.vy = 0;
-    player.rotation = 0;
-    cameraX = 0;
-    gameMode = "CUBE";
-    modeEl.innerText = "Mode: Cube";
-    gameActive = true;
-}
+// --- SPRITE ASSETS HANDLER ---
+const assetSheet = new Image();
+assetSheet.src = "https://i.postimg.cc/YSFLfxRh/Screenshot-20260527-205103-You-Tube.jpg"; 
 
-function triggerCrash() {
-    gameActive = false;
-    attempts++;
-    attemptEl.innerText = attempts;
-    setTimeout(resetGame, 600);
-}
+let assetsLoaded = false;
+assetSheet.onload = () => { assetsLoaded = true; };
 
-// Global Inputs (Touch Screen & Keyboard Spacebar)
 let isPressing = false;
-
 window.addEventListener('keydown', (e) => { if (e.code === 'Space') isPressing = true; });
 window.addEventListener('keyup', (e) => { if (e.code === 'Space') isPressing = false; });
 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isPressing = true; });
 canvas.addEventListener('touchend', (e) => { e.preventDefault(); isPressing = false; });
 
-// Principal Physics & Loop Logic
-function update() {
-    if (!gameActive) return;
+function launchEngine() {
+    gameState = "PLAYING";
+    mainMenu.style.display = 'none';
+    hud.style.display = 'flex';
+    resetRunner();
+}
 
-    // Standard Horizontal Progression
-    cameraX += PHYSICS.speed;
+function resetRunner() {
+    player.y = 300;
+    player.vy = 0;
+    player.rotation = 0;
+    player.trail = [];
+    cameraX = 0;
+    gameMode = "CUBE";
+    modeDisplayEl.innerText = "MODE: CUBE";
+    isRunning = true;
+}
+
+function playerCrash() {
+    isRunning = false;
+    attempts++;
+    attemptCountEl.innerText = attempts;
+    setTimeout(resetRunner, 500);
+}
+
+function updateEngine() {
+    if (!isRunning || gameState !== "PLAYING") return;
+
+    cameraX += CONFIG.speed;
+
+    if (gameMode === "WAVE") {
+        player.trail.push({ x: cameraX + player.x + player.w/2, y: player.y + player.h/2 });
+        if (player.trail.length > 120) player.trail.shift();
+    }
 
     if (gameMode === "CUBE") {
-        // Standard Falling Physics
-        player.vy += PHYSICS.gravity;
+        player.vy += CONFIG.gravity;
         player.y += player.vy;
 
-        // Ground Check
-        if (player.y >= PHYSICS.floorY - player.height) {
-            player.y = PHYSICS.floorY - player.height;
+        if (player.y >= CONFIG.floorY - player.h) {
+            player.y = CONFIG.floorY - player.h;
             player.vy = 0;
             player.isGrounded = true;
-            
-            // Snap rotation to nearest 90 degrees when landing
             player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
         } else {
             player.isGrounded = false;
         }
 
-        // Jump Execution
         if (isPressing && player.isGrounded) {
-            player.vy = PHYSICS.jumpForce;
+            player.vy = CONFIG.jump;
             player.isGrounded = false;
         }
 
-        // Spin player while in the air
-        if (!player.isGrounded) {
-            player.rotation += 0.09;
-        }
+        if (!player.isGrounded) player.rotation += 0.09;
+    } 
+    else if (gameMode === "WAVE") {
+        player.y += isPressing ? -CONFIG.waveSpeed : CONFIG.waveSpeed;
+        player.rotation = isPressing ? -0.35 : 0.35;
 
-    } else if (gameMode === "WAVE") {
-        // Diagonal Wave Movement
-        if (isPressing) {
-            player.y -= PHYSICS.waveSpeed;
-            player.rotation = -0.4; // Tilt up
-        } else {
-            player.y += PHYSICS.waveSpeed;
-            player.rotation = 0.4;  // Tilt down
-        }
-
-        // Boundary checks for Wave mode (Floor or Ceiling crashes)
-        if (player.y <= 0 || player.y >= PHYSICS.floorY - player.height) {
-            triggerCrash();
-        }
+        if (player.y <= 0 || player.y >= CONFIG.floorY - player.h) playerCrash();
     }
 
-    // Process Objects and Precise Hitbox Handling
-    obstacles.forEach(obs => {
-        let screenX = obs.x - cameraX + player.x;
+    // Precise Boundary/Collision Processing Loops
+    mapObjects.forEach(obj => {
+        let sx = obj.x - cameraX + player.x;
 
-        // Interactive Object Scaling
-        if (obs.type === 'SPIKE' && checkCollision(screenX + 8, PHYSICS.floorY - 28, 16, 28)) triggerCrash();
-        if (obs.type === 'WAVE_WALL_TOP' && checkCollision(screenX, obs.y, obs.w, obs.h)) triggerCrash();
-        if (obs.type === 'WAVE_WALL_BOT' && checkCollision(screenX, obs.y, obs.w, obs.h)) triggerCrash();
-
-        // Green Jump Pads
-        if (obs.type === 'PAD' && checkCollision(screenX, PHYSICS.floorY - 10, 30, 10)) {
-            player.vy = -20; // Massive launch
+        if (obj.type === 'SPIKE' && testHitbox(sx + 6, CONFIG.floorY - 32, 24, 32)) playerCrash();
+        if (obj.type === 'SAW') {
+            let sy = obj.y !== undefined ? obj.y : CONFIG.floorY - 45;
+            if (testHitbox(sx, sy, 45, 45)) playerCrash();
         }
+        if ((obj.type === 'PILLAR_TOP' || obj.type === 'PILLAR_BOT') && testHitbox(sx, obj.y, obj.w, obj.h)) playerCrash();
 
-        // Yellow Jump Orbs
-        if (obs.type === 'RING' && checkCollision(screenX, PHYSICS.floorY - 80, 24, 24)) {
-            if (isPressing && player.vy > -2) {
-                player.vy = -14; // Mid-air click refresh
-            }
+        if (obj.type === 'PAD' && testHitbox(sx, CONFIG.floorY - 12, 36, 12)) player.vy = -19.5;
+        if (obj.type === 'RING' && testHitbox(sx, CONFIG.floorY - 75, 32, 32)) {
+            if (isPressing && player.vy > -3) player.vy = -13.5;
         }
-
-        // Mode Portals
-        if (obs.type === 'PORTAL_WAVE' && checkCollision(screenX, PHYSICS.floorY - 120, 20, 120)) {
+        if (obj.type === 'PORTAL_WAVE' && testHitbox(sx, CONFIG.floorY - 140, 26, 140)) {
             gameMode = "WAVE";
-            modeEl.innerText = "Mode: Wave";
+            modeDisplayEl.innerText = "MODE: WAVE";
         }
-        if (obs.type === 'PORTAL_CUBE' && checkCollision(screenX, PHYSICS.floorY - 120, 20, 120)) {
+        if (obj.type === 'PORTAL_CUBE' && testHitbox(sx, CONFIG.floorY - 140, 26, 140)) {
             gameMode = "CUBE";
-            modeEl.innerText = "Mode: Cube";
+            modeDisplayEl.innerText = "MODE: CUBE";
+            player.trail = [];
         }
     });
 }
 
-function checkCollision(ox, oy, ow, oh) {
-    return player.x < ox + ow &&
-           player.x + player.width > ox &&
-           player.y < oy + oh &&
-           player.y + player.height > oy;
+function testHitbox(ox, oy, ow, oh) {
+    return player.x < ox + ow && player.x + player.w > ox && player.y < oy + oh && player.y + player.h > oy;
 }
 
-// Engine Visual Processing Screen Render
-function draw() {
-    // Canvas Clear
+function renderScreen() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Render Moving Background Grid Style Lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    let gridOffset = cameraX % 40;
-    for (let i = 0; i < canvas.width; i += 40) {
+    // Deep space backdrop processing
+    let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, gameMode === "WAVE" ? '#1e1b4b' : '#090514');
+    grad.addColorStop(1, '#010103');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Dynamic wave trail line drawing configuration
+    if (gameMode === "WAVE" && player.trail.length > 1) {
+        ctx.strokeStyle = 'rgba(255, 0, 127, 0.8)';
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(i - gridOffset, 0);
-        ctx.lineTo(i - gridOffset, PHYSICS.floorY);
+        for (let i = 0; i < player.trail.length; i++) {
+            let tx = player.trail[i].x - cameraX;
+            if (i === 0) ctx.moveTo(tx, player.trail[i].y);
+            else ctx.lineTo(tx, player.trail[i].y);
+        }
         ctx.stroke();
     }
 
-    // Render Floor Bed Line
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(0, PHYSICS.floorY, canvas.width, canvas.height - PHYSICS.floorY);
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0, PHYSICS.floorY);
-    ctx.lineTo(canvas.width, PHYSICS.floorY);
-    ctx.stroke();
+    // --- OBJECT DRAWING ENGINE WITH SHEET MAPPER ---
+    mapObjects.forEach(obj => {
+        let sx = obj.x - cameraX + player.x;
+        if (sx < -100 || sx > canvas.width + 100) return;
 
-    // Render Active Objects
-    obstacles.forEach(obs => {
-        let screenX = obs.x - cameraX + player.x;
-        if (screenX < -100 || screenX > canvas.width + 100) return;
-
-        if (obs.type === 'SPIKE') {
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath();
-            ctx.moveTo(screenX, PHYSICS.floorY);
-            ctx.lineTo(screenX + 16, PHYSICS.floorY - 32);
-            ctx.lineTo(screenX + 32, PHYSICS.floorY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = '#f87171';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        } 
-        else if (obs.type === 'PAD') {
-            ctx.fillStyle = '#10b981';
-            ctx.fillRect(screenX, PHYSICS.floorY - 10, 32, 10);
-        } 
-        else if (obs.type === 'RING') {
-            ctx.fillStyle = '#eab308';
-            ctx.beginPath();
-            ctx.arc(screenX + 16, PHYSICS.floorY - 68, 12, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        else if (obs.type === 'PORTAL_WAVE') {
-            ctx.fillStyle = '#a855f7';
-            ctx.fillRect(screenX, PHYSICS.floorY - 120, 16, 120);
-        }
-        else if (obs.type === 'PORTAL_CUBE' && gameMode === "WAVE") {
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(screenX, PHYSICS.floorY - 120, 16, 120);
-        }
-        else if (obs.type === 'WAVE_WALL_TOP' || obs.type === 'WAVE_WALL_BOT') {
-            ctx.fillStyle = '#374151';
-            ctx.fillRect(screenX, obs.y, obs.w, obs.h);
-            ctx.strokeStyle = '#4b5563';
-            ctx.strokeRect(screenX, obs.y, obs.w, obs.h);
+        if (assetsLoaded) {
+            // Mapping locations directly from your uploaded asset image sheet dimensions
+            if (obj.type === 'SPIKE') {
+                // Crops the white triangle obstacle near the bottom middle
+                ctx.drawImage(assetSheet, 240, 395, 45, 45, sx, CONFIG.floorY - 36, 36, 36);
+            } 
+            else if (obj.type === 'SAW') {
+                let sy = obj.y !== undefined ? obj.y : CONFIG.floorY - 50;
+                ctx.save();
+                ctx.translate(sx + 25, sy + 25);
+                ctx.rotate(cameraX * 0.06);
+                // Crops the classic razor-toothed circular sawblade from the middle right
+                ctx.drawImage(assetSheet, 432, 266, 75, 75, -25, -25, 50, 50);
+                ctx.restore();
+            }
+            else if (obj.type === 'PAD') {
+                // Crops the flat green dash block
+                ctx.drawImage(assetSheet, 240, 312, 50, 20, sx, CONFIG.floorY - 15, 45, 15);
+            }
+            else if (obj.type === 'RING') {
+                // Crops the glowing circular orb icon
+                ctx.drawImage(assetSheet, 442, 355, 40, 40, sx, CONFIG.floorY - 70, 32, 32); 
+            }
+            else if (obj.type === 'PORTAL_WAVE') {
+                // Crops pink wave customization rings to look like entrance portals
+                ctx.drawImage(assetSheet, 483, 192, 20, 65, sx, CONFIG.floorY - 140, 26, 140);
+            }
+            else if (obj.type === 'PORTAL_CUBE') {
+                // Crops blue rings to act as the return portal
+                ctx.drawImage(assetSheet, 513, 192, 20, 65, sx, CONFIG.floorY - 140, 26, 140);
+            }
+            else {
+                // Obstacle block structures
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(sx, obj.y, obj.w, obj.h);
+            }
+        } else {
+            // Direct vector fallback code shapes
+            ctx.fillStyle = obj.type === 'SPIKE' ? '#ef4444' : '#6b7280';
+            if(obj.type === 'SPIKE') {
+                ctx.beginPath(); ctx.moveTo(sx, CONFIG.floorY); ctx.lineTo(sx+18, CONFIG.floorY-36); ctx.lineTo(sx+36, CONFIG.floorY); ctx.fill();
+            } else if (obj.type === 'SAW') {
+                ctx.fillRect(sx, CONFIG.floorY - 45, 45, 45);
+            } else if (obj.type === 'PILLAR_TOP' || obj.type === 'PILLAR_BOT') {
+                ctx.fillRect(sx, obj.y, obj.w, obj.h);
+            }
         }
     });
 
-    // Render Configured Player Icon Representation
+    // Drawing the Neon Floor Grid Track Bed
+    ctx.fillStyle = '#0b0c16';
+    ctx.fillRect(0, CONFIG.floorY, canvas.width, canvas.height - CONFIG.floorY);
+    ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, CONFIG.floorY); ctx.lineTo(canvas.width, CONFIG.floorY); ctx.stroke();
+
+    // Player Icon Generation
     ctx.save();
-    ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+    ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
     ctx.rotate(player.rotation);
-    
-    // Draw Outer Styled Frame Layer
-    ctx.fillStyle = player.primaryColor;
-    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
-    
-    // Draw Inner Iconic Accent Detail
-    ctx.fillStyle = player.secondaryColor;
-    ctx.fillRect(-player.width / 4, -player.height / 4, player.width / 2, player.height / 2);
-    
+    if (assetsLoaded) {
+        // Crops the classic pink-and-blue square icon directly from your file
+        ctx.drawImage(assetSheet, 35, 395, 45, 45, -player.w / 2, -player.h / 2, player.w, player.h);
+    } else {
+        ctx.fillStyle = '#ff007f'; ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+    }
     ctx.restore();
 }
 
-// Unified Core Loop Processor Execution
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
+function processLoop() {
+    updateEngine();
+    renderScreen();
+    requestAnimationFrame(processLoop);
 }
 
-loop();
+processLoop();
 </script>
 
 </body>
