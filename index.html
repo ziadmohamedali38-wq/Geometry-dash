@@ -3,37 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GD Sprite Engine Edition</title>
+    <title>XcreatorGoal Challenge Edition</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; user-select: none; }
-        body { background: #050510; font-family: 'Arial Black', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
-        #gameContainer { position: relative; width: 100%; height: 100%; max-width: 854px; max-height: 480px; aspect-ratio: 16/9; box-shadow: 0 0 50px rgba(34, 197, 94, 0.4); border: 3px solid #22c55e; background: #000; }
+        body { background: #050508; font-family: 'Arial Black', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+        #gameContainer { position: relative; width: 100%; height: 100%; max-width: 854px; max-height: 480px; aspect-ratio: 16/9; box-shadow: 0 0 40px rgba(0, 0, 0, 0.8); background: #000; border: 4px solid #333; }
         canvas { width: 100%; height: 100%; display: block; }
         
-        /* Interactive Overlay Screens */
-        .overlay-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
-        #mainMenu { background: radial-gradient(circle, #1e1b4b 0%, #020205 100%); }
-        .menu-title { color: #fff; font-size: 52px; text-shadow: 4px 4px 0px #1e40af, 0 0 30px rgba(255,255,255,0.4); margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; }
+        /* Overlay UI Templates */
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; text-align: center; }
         
-        /* Custom Sprite-Style Button mapping your exact asset design */
-        .sprite-play-btn { width: 110px; height: 110px; border-radius: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.1s; background-image: url('https://i.postimg.cc/YSFLfxRh/Screenshot-20260527-205103-You-Tube.jpg'); background-size: 550px 460px; background-position: -435px -105px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .sprite-play-btn:active { transform: scale(0.95); }
+        /* Main Menu matching video exactly */
+        #mainMenu { background: #5a5a5a; background-image: radial-gradient(circle, #777 10%, transparent 11%); background-size: 30px 30px; }
+        .menu-title { color: #ffffff; font-size: 42px; text-shadow: 3px 3px 0 #000; margin-bottom: 5px; text-transform: uppercase; }
+        .menu-subtitle { color: #facc15; font-size: 24px; text-shadow: 2px 2px 0 #000; margin-bottom: 25px; text-transform: uppercase; }
+        
+        /* Green Main Menu Button from Sheet */
+        .play-btn-container { width: 110px; height: 110px; cursor: pointer; background-image: url('https://i.postimg.cc/YSFLfxRh/Screenshot-20260527-205103-You-Tube.jpg'); background-size: 550px 460px; background-position: -436px -106px; border-radius: 18px; filter: drop-shadow(0px 6px 0px #15803d); }
+        .play-btn-container:active { transform: translateY(4px); filter: drop-shadow(0px 2px 0px #15803d); }
+        
+        /* Difficulty Selectors at Bottom */
+        .difficulty-row { display: flex; gap: 15px; margin-top: 25px; }
+        .diff-icon { width: 45px; height: 45px; background-image: url('https://i.postimg.cc/YSFLfxRh/Screenshot-20260527-205103-You-Tube.jpg'); background-size: 550px 460px; cursor: pointer; }
+        .diff-easy { background-position: -130px -395px; }
+        .diff-hard { background-position: -273px -395px; }
+        .diff-demon { background-position: -437px -267px; }
 
-        #hud { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; color: white; font-size: 18px; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 5; display: none; }
-        .stats-badge { background: rgba(0, 0, 0, 0.7); padding: 8px 16px; border-radius: 10px; border: 2px solid #22c55e; }
+        /* Crashed State Screen */
+        #crashScreen { background: rgba(0,0,0,0.85); display: none; }
+        .crash-text { color: #ef4444; font-size: 48px; font-weight: bold; text-shadow: 3px 3px 0 #000; letter-spacing: 2px; margin-bottom: 15px; }
+        .meme-box { width: 160px; height: 160px; border: 4px solid #fff; border-radius: 4px; background-size: cover; background-position: center; box-shadow: 0 0 20px rgba(255,255,255,0.3); }
+
+        /* Scorecard Challenge Board Screen */
+        #scoreboardScreen { background: #7c2d12; border: 12px solid #ea580c; display: none; padding: 20px; color: white; }
+        .board-title { font-size: 32px; color: #facc15; text-shadow: 2px 2px 0 #000; margin-bottom: 15px; }
+        .score-list { width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        .score-item { display: flex; justify-content: space-between; background: #9a3412; padding: 8px 15px; border-radius: 6px; border: 2px solid #ea580c; font-size: 14px; }
+        .checked { color: #4ade80; font-weight: bold; }
+
+        /* HUD */
+        #hud { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; color: white; font-size: 16px; font-weight: bold; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 5; display: none; }
     </style>
 </head>
 <body>
 
 <div id="gameContainer">
-    <div id="mainMenu" class="overlay-ui">
-        <div class="menu-title">Spinoff Deluxe</div>
-        <div class="sprite-play-btn" onclick="launchEngine()"></div>
+    <div id="mainMenu" class="overlay-screen">
+        <div class="menu-title">Geometry Dash</div>
+        <div class="menu-subtitle" id="selectedDiffText">Neon</div>
+        <div class="play-btn-container" onclick="launchGame()"></div>
+        <div class="difficulty-row">
+            <div class="diff-icon diff-easy" onclick="setDifficulty('Easy')"></div>
+            <div class="diff-icon diff-hard" onclick="setDifficulty('Hard')"></div>
+            <div class="diff-icon diff-demon" onclick="setDifficulty('Grandpa Demon')"></div>
+        </div>
+    </div>
+
+    <div id="crashScreen" class="overlay-screen">
+        <div class="crash-text">CRASHED</div>
+        <div class="meme-box" id="memeBox"></div>
+    </div>
+
+    <div id="scoreboardScreen" class="overlay-screen">
+        <div class="board-title">Gemini Spinoff Results</div>
+        <div class="score-list">
+            <div class="score-item"><span>Spikes Passed</span><span class="checked">✓ (2 PTS)</span></div>
+            <div class="score-item"><span>Saw Blades Dodged</span><span class="checked">✓ (3 PTS)</span></div>
+            <div class="score-item"><span>Jump Pads Triggered</span><span class="checked">✓ (3 PTS)</span></div>
+            <div class="score-item"><span>Jump Rings Triggered</span><span class="checked">✓ (3 PTS)</span></div>
+            <div class="score-item"><span>Wave Mode Completed</span><span class="checked" id="finalScoreText">✓ (5 PTS)</span></div>
+        </div>
+        <button style="padding: 10px 25px; font-weight:bold; cursor:pointer;" onclick="returnToMenu()">Continue</button>
     </div>
 
     <div id="hud">
-        <div class="stats-badge">Attempt <span id="attemptCount">1</span></div>
-        <div class="stats-badge" id="modeDisplay">MODE: CUBE</div>
+        <div id="attemptDisplay">Attempt 1</div>
+        <div id="modeDisplay">MODE: CUBE</div>
     </div>
 
     <canvas id="gameCanvas" width="854" height="480"></canvas>
@@ -44,16 +89,27 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const hud = document.getElementById('hud');
 const mainMenu = document.getElementById('mainMenu');
-const attemptCountEl = document.getElementById('attemptCount');
-const modeDisplayEl = document.getElementById('modeDisplay');
+const crashScreen = document.getElementById('crashScreen');
+const scoreboardScreen = document.getElementById('scoreboardScreen');
+const memeBox = document.getElementById('memeBox');
+const selectedDiffText = document.getElementById('selectedDiffText');
+const attemptDisplay = document.getElementById('attemptDisplay');
+const modeDisplay = document.getElementById('modeDisplay');
 
-let gameState = "MENU";
-let isRunning = false;
+let state = "MENU";
+let active = false;
 let cameraX = 0;
 let attempts = 1;
 let gameMode = "CUBE";
+let currentDiff = "Neon";
 
-const CONFIG = {
+// Funny reaction faces used during crash sequence frames
+const memeImages = [
+    "https://images.jpegmini.com/user/images/slider_puffin_before_mobile.jpg", // Substitute with precise reaction faces if preferred
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSwh797OQZ9b5P-XU6Nl3Omd07802N_1wT8dw&s"
+];
+
+const ENGINE = {
     gravity: 1.35,
     jump: -15.5,
     speed: 7,
@@ -62,85 +118,102 @@ const CONFIG = {
 };
 
 const player = {
-    x: 130,
-    y: 300,
-    w: 36,
-    h: 36,
-    vy: 0,
-    isGrounded: false,
-    rotation: 0,
-    trail: []
+    x: 130, y: 300, w: 36, h: 36, vy: 0,
+    isGrounded: false, rotation: 0, trail: []
 };
 
-// Map containing your specific layout configurations
+// Map configurations layout containing obstacles sequence
 let mapObjects = [
-    { x: 600, type: 'SPIKE' },
-    { x: 850, type: 'SAW' },
-    { x: 1050, type: 'PAD' },
-    { x: 1250, type: 'SPIKE' },
-    { x: 1400, type: 'RING' },
-    { x: 1700, type: 'PORTAL_WAVE' },
-    { x: 1950, type: 'PILLAR_TOP', y: 0, w: 70, h: 150 },
-    { x: 2150, type: 'PILLAR_BOT', y: 250, w: 70, h: 140 },
-    { x: 2400, type: 'SAW', y: 180 },
-    { x: 2650, type: 'PORTAL_CUBE' },
-    { x: 2900, type: 'SPIKE' }
+    { x: 550, type: 'SPIKE' },
+    { x: 750, type: 'SAW' },
+    { x: 950, type: 'PAD' },
+    { x: 1150, type: 'SPIKE' },
+    { x: 1350, type: 'RING' },
+    { x: 1600, type: 'PORTAL_WAVE' },
+    { x: 1850, type: 'BLOCK_TOP', y: 0, w: 60, h: 140 },
+    { x: 2050, type: 'BLOCK_BOT', y: 260, w: 60, h: 130 },
+    { x: 2300, type: 'PORTAL_CUBE' },
+    { x: 2550, type: 'SPIKE' }
 ];
 
-// --- SPRITE ASSETS HANDLER ---
 const assetSheet = new Image();
-assetSheet.src = "https://i.postimg.cc/YSFLfxRh/Screenshot-20260527-205103-You-Tube.jpg"; 
+assetSheet.src = "https://i.postimg.cc/YSFLfxRh/Screenshot-20260527-205103-You-Tube.jpg";
+let assetsReady = false;
+assetSheet.onload = () => { assetsReady = true; };
 
-let assetsLoaded = false;
-assetSheet.onload = () => { assetsLoaded = true; };
+let isInputActive = false;
+window.addEventListener('keydown', (e) => { if(e.code === 'Space' || e.code === 'ArrowUp') isInputActive = true; });
+window.addEventListener('keyup', (e) => { if(e.code === 'Space' || e.code === 'ArrowUp') isInputActive = false; });
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isInputActive = true; });
+canvas.addEventListener('touchend', (e) => { e.preventDefault(); isInputActive = false; });
 
-let isPressing = false;
-window.addEventListener('keydown', (e) => { if (e.code === 'Space') isPressing = true; });
-window.addEventListener('keyup', (e) => { if (e.code === 'Space') isPressing = false; });
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isPressing = true; });
-canvas.addEventListener('touchend', (e) => { e.preventDefault(); isPressing = false; });
+function setDifficulty(diffName) {
+    currentDiff = diffName;
+    selectedDiffText.innerText = diffName;
+}
 
-function launchEngine() {
-    gameState = "PLAYING";
+function launchGame() {
+    state = "PLAYING";
     mainMenu.style.display = 'none';
     hud.style.display = 'flex';
-    resetRunner();
+    restartRunner();
 }
 
-function resetRunner() {
-    player.y = 300;
-    player.vy = 0;
-    player.rotation = 0;
-    player.trail = [];
+function restartRunner() {
+    player.y = 300; player.vy = 0; player.rotation = 0; player.trail = [];
     cameraX = 0;
     gameMode = "CUBE";
-    modeDisplayEl.innerText = "MODE: CUBE";
-    isRunning = true;
+    modeDisplay.innerText = "MODE: CUBE";
+    attemptDisplay.innerText = "Attempt " + attempts;
+    crashScreen.style.display = 'none';
+    active = true;
 }
 
-function playerCrash() {
-    isRunning = false;
+function triggerCrash() {
+    active = false;
     attempts++;
-    attemptCountEl.innerText = attempts;
-    setTimeout(resetRunner, 500);
+    // Pick random reaction meme
+    memeBox.style.backgroundImage = `url('${memeImages[Math.floor(Math.random() * memeImages.length)]}')`;
+    crashScreen.style.display = 'flex';
+    setTimeout(restartRunner, 1000);
 }
 
-function updateEngine() {
-    if (!isRunning || gameState !== "PLAYING") return;
+function displayScorecard() {
+    active = false;
+    state = "SCOREBOARD";
+    hud.style.display = 'none';
+    scoreboardScreen.style.display = 'flex';
+}
 
-    cameraX += CONFIG.speed;
+function returnToMenu() {
+    scoreboardScreen.style.display = 'none';
+    mainMenu.style.display = 'flex';
+    state = "MENU";
+    attempts = 1;
+}
+
+function update() {
+    if (!active || state !== "PLAYING") return;
+
+    cameraX += ENGINE.speed;
+
+    // Trigger scoreboard at map end boundary line
+    if (cameraX > 2800) {
+        displayScorecard();
+        return;
+    }
 
     if (gameMode === "WAVE") {
         player.trail.push({ x: cameraX + player.x + player.w/2, y: player.y + player.h/2 });
-        if (player.trail.length > 120) player.trail.shift();
+        if (player.trail.length > 100) player.trail.shift();
     }
 
     if (gameMode === "CUBE") {
-        player.vy += CONFIG.gravity;
+        player.vy += ENGINE.gravity;
         player.y += player.vy;
 
-        if (player.y >= CONFIG.floorY - player.h) {
-            player.y = CONFIG.floorY - player.h;
+        if (player.y >= ENGINE.floorY - player.h) {
+            player.y = ENGINE.floorY - player.h;
             player.vy = 0;
             player.isGrounded = true;
             player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
@@ -148,66 +221,51 @@ function updateEngine() {
             player.isGrounded = false;
         }
 
-        if (isPressing && player.isGrounded) {
-            player.vy = CONFIG.jump;
+        if (isInputActive && player.isGrounded) {
+            player.vy = ENGINE.jump;
             player.isGrounded = false;
         }
-
         if (!player.isGrounded) player.rotation += 0.09;
     } 
     else if (gameMode === "WAVE") {
-        player.y += isPressing ? -CONFIG.waveSpeed : CONFIG.waveSpeed;
-        player.rotation = isPressing ? -0.35 : 0.35;
-
-        if (player.y <= 0 || player.y >= CONFIG.floorY - player.h) playerCrash();
+        player.y += isInputActive ? -ENGINE.waveSpeed : ENGINE.waveSpeed;
+        player.rotation = isInputActive ? -0.35 : 0.35;
+        if (player.y <= 0 || player.y >= ENGINE.floorY - player.h) triggerCrash();
     }
 
-    // Precise Boundary/Collision Processing Loops
+    // Process Object Hitboxes
     mapObjects.forEach(obj => {
         let sx = obj.x - cameraX + player.x;
-
-        if (obj.type === 'SPIKE' && testHitbox(sx + 6, CONFIG.floorY - 32, 24, 32)) playerCrash();
-        if (obj.type === 'SAW') {
-            let sy = obj.y !== undefined ? obj.y : CONFIG.floorY - 45;
-            if (testHitbox(sx, sy, 45, 45)) playerCrash();
-        }
-        if ((obj.type === 'PILLAR_TOP' || obj.type === 'PILLAR_BOT') && testHitbox(sx, obj.y, obj.w, obj.h)) playerCrash();
-
-        if (obj.type === 'PAD' && testHitbox(sx, CONFIG.floorY - 12, 36, 12)) player.vy = -19.5;
-        if (obj.type === 'RING' && testHitbox(sx, CONFIG.floorY - 75, 32, 32)) {
-            if (isPressing && player.vy > -3) player.vy = -13.5;
-        }
-        if (obj.type === 'PORTAL_WAVE' && testHitbox(sx, CONFIG.floorY - 140, 26, 140)) {
-            gameMode = "WAVE";
-            modeDisplayEl.innerText = "MODE: WAVE";
-        }
-        if (obj.type === 'PORTAL_CUBE' && testHitbox(sx, CONFIG.floorY - 140, 26, 140)) {
-            gameMode = "CUBE";
-            modeDisplayEl.innerText = "MODE: CUBE";
-            player.trail = [];
+        if (player.x < sx + 32 && player.x + player.w > sx && player.y < obj.y + (obj.h || 32) && player.y + player.h > (obj.y || ENGINE.floorY - 32)) {
+            if (obj.type === 'SPIKE' || obj.type === 'SAW' || obj.type === 'BLOCK_TOP' || obj.type === 'BLOCK_BOT') {
+                triggerCrash();
+            }
+            if (obj.type === 'PAD') player.vy = -19.5;
+            if (obj.type === 'RING' && isInputActive && player.vy > -3) player.vy = -13;
+            if (obj.type === 'PORTAL_WAVE') { gameMode = "WAVE"; modeDisplay.innerText = "MODE: WAVE"; }
+            if (obj.type === 'PORTAL_CUBE') { gameMode = "CUBE"; modeDisplay.innerText = "MODE: CUBE"; player.trail = []; }
         }
     });
 }
 
-function testHitbox(ox, oy, ow, oh) {
-    return player.x < ox + ow && player.x + player.w > ox && player.y < oy + oh && player.y + player.h > oy;
-}
-
-function renderScreen() {
+function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Deep space backdrop processing
-    let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, gameMode === "WAVE" ? '#1e1b4b' : '#090514');
-    grad.addColorStop(1, '#010103');
-    ctx.fillStyle = grad;
+    // Render checkered block background wall textures matching video
+    ctx.fillStyle = "#1e1e24";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#18181b";
+    let bSize = 70;
+    let bOffset = (cameraX * 0.3) % bSize;
+    for (let x = -bSize; x < canvas.width + bSize; x += bSize) {
+        for (let y = 0; y < ENGINE.floorY; y += bSize) {
+            ctx.strokeRect(x - bOffset, y, bSize, bSize);
+        }
+    }
 
-    // Dynamic wave trail line drawing configuration
+    // Wave Mode Zig-zag trails
     if (gameMode === "WAVE" && player.trail.length > 1) {
-        ctx.strokeStyle = 'rgba(255, 0, 127, 0.8)';
-        ctx.lineWidth = 6;
-        ctx.beginPath();
+        ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 5; ctx.beginPath();
         for (let i = 0; i < player.trail.length; i++) {
             let tx = player.trail[i].x - cameraX;
             if (i === 0) ctx.moveTo(tx, player.trail[i].y);
@@ -216,87 +274,46 @@ function renderScreen() {
         ctx.stroke();
     }
 
-    // --- OBJECT DRAWING ENGINE WITH SHEET MAPPER ---
+    // Render Map Sprites
     mapObjects.forEach(obj => {
         let sx = obj.x - cameraX + player.x;
         if (sx < -100 || sx > canvas.width + 100) return;
 
-        if (assetsLoaded) {
-            // Mapping locations directly from your uploaded asset image sheet dimensions
-            if (obj.type === 'SPIKE') {
-                // Crops the white triangle obstacle near the bottom middle
-                ctx.drawImage(assetSheet, 240, 395, 45, 45, sx, CONFIG.floorY - 36, 36, 36);
-            } 
-            else if (obj.type === 'SAW') {
-                let sy = obj.y !== undefined ? obj.y : CONFIG.floorY - 50;
-                ctx.save();
-                ctx.translate(sx + 25, sy + 25);
-                ctx.rotate(cameraX * 0.06);
-                // Crops the classic razor-toothed circular sawblade from the middle right
-                ctx.drawImage(assetSheet, 432, 266, 75, 75, -25, -25, 50, 50);
-                ctx.restore();
-            }
-            else if (obj.type === 'PAD') {
-                // Crops the flat green dash block
-                ctx.drawImage(assetSheet, 240, 312, 50, 20, sx, CONFIG.floorY - 15, 45, 15);
-            }
-            else if (obj.type === 'RING') {
-                // Crops the glowing circular orb icon
-                ctx.drawImage(assetSheet, 442, 355, 40, 40, sx, CONFIG.floorY - 70, 32, 32); 
-            }
-            else if (obj.type === 'PORTAL_WAVE') {
-                // Crops pink wave customization rings to look like entrance portals
-                ctx.drawImage(assetSheet, 483, 192, 20, 65, sx, CONFIG.floorY - 140, 26, 140);
-            }
-            else if (obj.type === 'PORTAL_CUBE') {
-                // Crops blue rings to act as the return portal
-                ctx.drawImage(assetSheet, 513, 192, 20, 65, sx, CONFIG.floorY - 140, 26, 140);
-            }
-            else {
-                // Obstacle block structures
-                ctx.fillStyle = '#1e293b';
-                ctx.fillRect(sx, obj.y, obj.w, obj.h);
-            }
-        } else {
-            // Direct vector fallback code shapes
-            ctx.fillStyle = obj.type === 'SPIKE' ? '#ef4444' : '#6b7280';
-            if(obj.type === 'SPIKE') {
-                ctx.beginPath(); ctx.moveTo(sx, CONFIG.floorY); ctx.lineTo(sx+18, CONFIG.floorY-36); ctx.lineTo(sx+36, CONFIG.floorY); ctx.fill();
-            } else if (obj.type === 'SAW') {
-                ctx.fillRect(sx, CONFIG.floorY - 45, 45, 45);
-            } else if (obj.type === 'PILLAR_TOP' || obj.type === 'PILLAR_BOT') {
-                ctx.fillRect(sx, obj.y, obj.w, obj.h);
-            }
+        if (assetsReady) {
+            if (obj.type === 'SPIKE') ctx.drawImage(assetSheet, 240, 395, 45, 45, sx, ENGINE.floorY - 36, 36, 36);
+            else if (obj.type === 'SAW') ctx.drawImage(assetSheet, 432, 266, 75, 75, sx, ENGINE.floorY - 45, 45, 45);
+            else if (obj.type === 'PAD') ctx.drawImage(assetSheet, 240, 312, 50, 20, sx, ENGINE.floorY - 15, 42, 15);
+            else if (obj.type === 'RING') ctx.drawImage(assetSheet, 442, 355, 40, 40, sx, ENGINE.floorY - 60, 32, 32);
+            else if (obj.type === 'PORTAL_WAVE') ctx.drawImage(assetSheet, 483, 192, 20, 65, sx, ENGINE.floorY - 130, 26, 130);
+            else if (obj.type === 'PORTAL_CUBE') ctx.drawImage(assetSheet, 513, 192, 20, 65, sx, ENGINE.floorY - 130, 26, 130);
+            else { ctx.fillStyle = '#27272a'; ctx.fillRect(sx, obj.y, obj.w, obj.h); }
         }
     });
 
-    // Drawing the Neon Floor Grid Track Bed
-    ctx.fillStyle = '#0b0c16';
-    ctx.fillRect(0, CONFIG.floorY, canvas.width, canvas.height - CONFIG.floorY);
-    ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(0, CONFIG.floorY); ctx.lineTo(canvas.width, CONFIG.floorY); ctx.stroke();
-
-    // Player Icon Generation
-    ctx.save();
-    ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
-    ctx.rotate(player.rotation);
-    if (assetsLoaded) {
-        // Crops the classic pink-and-blue square icon directly from your file
-        ctx.drawImage(assetSheet, 35, 395, 45, 45, -player.w / 2, -player.h / 2, player.w, player.h);
-    } else {
-        ctx.fillStyle = '#ff007f'; ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+    // Floor Track Bed Floor Panels
+    ctx.fillStyle = '#0f172a'; ctx.fillRect(0, ENGINE.floorY, canvas.width, canvas.height - ENGINE.floorY);
+    ctx.fillStyle = '#1e293b';
+    let fOffset = cameraX % 40;
+    for (let x = -40; x < canvas.width + 40; x += 40) {
+        ctx.fillRect(x - fOffset, ENGINE.floorY + 4, 36, 25);
     }
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, ENGINE.floorY); ctx.lineTo(canvas.width, ENGINE.floorY); ctx.stroke();
+
+    // Player Rendering Character Layer
+    ctx.save();
+    ctx.translate(player.x + player.w/2, player.y + player.h/2);
+    ctx.rotate(player.rotation);
+    if (assetsReady) ctx.drawImage(assetSheet, 35, 395, 45, 45, -player.w/2, -player.h/2, player.w, player.h);
+    else { ctx.fillStyle = '#06b6d4'; ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h); }
     ctx.restore();
 }
 
-function processLoop() {
-    updateEngine();
-    renderScreen();
-    requestAnimationFrame(processLoop);
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
 }
-
-processLoop();
+gameLoop();
 </script>
-
 </body>
 </html>
